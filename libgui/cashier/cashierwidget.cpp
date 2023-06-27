@@ -489,6 +489,7 @@ void CashierWidget::printBill(const QVariantMap &data) {
     escp->fullText(QStringList{data["number"].toString(), UserSession::username()});
     escp->newLine()->column(QList<int>())->line(QChar('='));
     const QVariantList &l = data["cart"].toList();
+	int sum = 0;
     for (auto v : l) {
         QVariantMap m = v.toMap();
         int flag = m["flag"].toInt();
@@ -502,23 +503,26 @@ void CashierWidget::printBill(const QVariantMap &data) {
             name = QString("%1 - %2").arg(Util::elide(m["barcode"].toString(), barcodelen)).arg(m["name"].toString());
         else
             name = m["name"].toString();
-        if (count == 1.0f && discount == 0 && (name.size() + total.size() + 1) < escp->width()) {
+        /*if (count == 1.0f && discount == 0 && (name.size() + total.size() + 1) < escp->width()) {
             escp->fullText(QStringList{name, total})->newLine();
             continue;
-        }
+        }*/
         const QString &note = m["note"].toString();
+		const QString &unit = m["unit"].toString();
         if (name.length() > escp->width())
             name = name.left(escp->width());
         escp->leftText(name)->newLine();
         if (!note.isEmpty())
             escp->leftText(QString("* %1").arg(note))->newLine();
         QString s =
-            QString("%1 x %2").arg(Preference::formatFloat(count)).arg(Preference::formatMoney(m["price"].toDouble()));
-        if (m["discount"].toDouble() != 0) {
-            s = s % " (" % Preference::formatMoney(-discount) % ")";
-        }
+            QString("  %1 %2 x %3").arg(Preference::formatMoney(count)).arg(unit).arg(Preference::formatMoney(m["price"].toDouble()));
+		if (m["discount"].toDouble() != 0) {
+            s = s % " (" % Preference::formatMoney(-discount) % ")";        
+		}
         escp->fullText(QStringList{s, total})->newLine();
-    }
+    sum+=count;
+	}
+	escp->centerText(QString("Jumlah Item: %1").arg(sum))->newLine();
     escp->line()->column(QList<int>());
     if (isTax) {
         escp->fullText(QStringList{tr("Sub-total"), Preference::formatMoney(data["subtotal"].toDouble())})
@@ -563,7 +567,7 @@ void CashierWidget::printBill(const QVariantMap &data) {
     }
     escp->doubleHeight(false)
         ->line()
-        ->leftText(footer, true)
+        ->centerText(footer, true)
         ->newLine(Preference::getInt(SETTING::PRINTER_CASHIER_LINEFEED, 3));
     GuiUtil::print(escp->data());
     delete escp;
